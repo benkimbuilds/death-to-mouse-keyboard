@@ -9,7 +9,7 @@ Reduce cognitive load while using dictation + controller together by making butt
 - `Options`: close focused split only (`close_surface` / `Cmd+W`), not whole tab.
 - `X`: toggle split zoom (temporary maximize/restore for focused split).
 - `D-pad Up/Down`: model picker up/down.
-- `D-pad Left`: send backslash (`\`).
+- `D-pad Left`: send slash (`/`).
 - `D-pad Right`: `Cmd+Shift+G`.
 - `Y`: reverse navigation (`Shift+Tab`).
 

@@ -190,9 +190,9 @@
           "edgeTrigger": true,
           "action": {
             "type": "keystroke",
-            "keyCode": 42,
+            "keyCode": 44,
             "modifiers": [],
-            "description": "Send backslash"
+            "description": "Send slash"
           }
         },
         "dpadRight": {
