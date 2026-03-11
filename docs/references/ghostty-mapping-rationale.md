@@ -9,7 +9,7 @@ Reduce cognitive load while using dictation + controller together by making butt
 - `Options`: close focused split only (`close_surface` / `Cmd+W`), not whole tab.
 - `L2` (`leftTrigger`): hold `Command` as a modifier chord.
 - `X`: send `Tab`, primarily as the `L2` companion for app switching (`Cmd+Tab`).
-- Left thumbstick click: global left mouse click.
+- Left thumbstick click: intentionally unassigned for now because click-plus-scroll on the same stick felt noisy in practice.
 - D-pad `Up/Down/Left/Right`: global arrow-key navigation via `alwaysOn`.
 - `Y`: `Cmd+Shift+G`.
 

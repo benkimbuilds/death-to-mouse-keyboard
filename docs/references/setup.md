@@ -49,7 +49,7 @@ swift run stadia-controller-bridge --config config/mappings.json --no-dry-run --
   - `R2` (`rightTrigger`): hold `F12` (`holdKeystroke`)
   - `L2` (`leftTrigger`): hold `Command`
   - `X`: send `Tab` (`L2` + `X` behaves like `Cmd+Tab`)
-  - Left thumbstick click: left mouse click
+  - Left thumbstick click: unassigned
   - Left stick `Y`: vertical scroll (analog; deadzone/rate-limited)
   - D-pad `Up/Down/Left/Right`: send arrow keys
 - Ghostty defaults:

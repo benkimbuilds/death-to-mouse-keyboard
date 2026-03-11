@@ -41,15 +41,6 @@
           "description": "Send Tab (L2 + X behaves like Cmd+Tab)"
         }
       },
-      "leftThumbstickButton": {
-        "debounceMs": 120,
-        "edgeTrigger": true,
-        "action": {
-          "type": "mouseClick",
-          "mouseButton": "left",
-          "description": "Left mouse click"
-        }
-      },
       "dpadUp": {
         "debounceMs": 140,
         "edgeTrigger": true,
