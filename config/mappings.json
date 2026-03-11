@@ -133,28 +133,6 @@
             "description": "Open /model popup"
           }
         },
-        "dpadLeft": {
-          "debounceMs": 140,
-          "edgeTrigger": true,
-          "action": {
-            "type": "keystroke",
-            "keyCode": 44,
-            "modifiers": [],
-            "description": "Send slash (/)"
-          }
-        },
-        "dpadRight": {
-          "debounceMs": 140,
-          "edgeTrigger": true,
-          "action": {
-            "type": "keystroke",
-            "keyCode": 21,
-            "modifiers": [
-              "shift"
-            ],
-            "description": "Send dollar sign ($)"
-          }
-        },
         "share": {
           "debounceMs": 500,
           "edgeTrigger": true,

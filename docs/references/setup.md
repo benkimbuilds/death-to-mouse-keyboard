@@ -56,8 +56,6 @@ swift run stadia-controller-bridge --config config/mappings.json --no-dry-run --
   - Right stick: currently unassigned
   - `Options`: close focused split surface (`Cmd+W`)
   - `Menu`: open `/model`
-  - D-pad `Left`: send `/`
-  - D-pad `Right`: send `$`
   - `Y`: send `Cmd+Shift+G`
   - Right thumbstick click: split right (`Cmd+D`)
   - `L1` (`leftShoulder`): cycle split focus in current tab
