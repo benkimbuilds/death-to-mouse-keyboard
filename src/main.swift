@@ -828,7 +828,7 @@ final class ActionExecutor {
     private func executeGhosttyScroll(y: Int) throws {
         let script = """
         tell application "Ghostty"
-          send mouse scroll y \(y) to focused terminal of selected tab of front window
+          send mouse scroll x 0 y \(y) to focused terminal of selected tab of front window
         end tell
         """
         try runProcess(executable: "/usr/bin/osascript", arguments: ["-e", script])
