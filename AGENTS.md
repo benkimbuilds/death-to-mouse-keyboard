@@ -23,3 +23,4 @@ Build a local bridge that maps Stadia controller inputs to macOS actions and app
 - Use canonical machine-level launchd entrypoints from `~/GitHub/scripts/setup/` to avoid setup drift across machines.
 - Keep launchd service identity consistent (`com.stadia-controller-bridge`) across machines; do not introduce per-machine labels unless explicitly requested.
 - Keep staged runtime target consistent: `~/Library/Application Support/stadia-controller-bridge/StadiaControllerBridge.app`.
+- Treat `config/mappings.json` hot reload as config-only. If a change adds a new runtime action type or config schema, reinstall the staged launchd app so launchd stops running the old binary.

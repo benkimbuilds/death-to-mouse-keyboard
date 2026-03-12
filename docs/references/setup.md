@@ -79,6 +79,15 @@ If Ghostty AppleScript is disabled or you are on Ghostty older than `1.3.0`, the
 - `config/mappings.json` is watched while the bridge is running.
 - Save changes to mappings and the process reloads automatically.
 - Code changes still require a process restart.
+- Runtime/config-schema changes also require reinstalling the staged launchd app so launchd stops running the old binary:
+  - `~/GitHub/scripts/setup/stadia/install-launchd-stadia-controller-bridge.sh --mode live`
+
+## Ghostty AppleScript Note
+- This repo intentionally builds part of the Ghostty flow on top of Ghostty's native AppleScript support.
+- Current AppleScript usage is narrow:
+  - `Share` creates a new tab with custom startup behavior and immediately runs `codex_jump`.
+  - `ghosttyAction` dispatches Ghostty-native terminal actions through Ghostty's AppleScript bridge.
+- Ghostty marks AppleScript as a preview API in `1.3.x`, but this is currently the cleanest way to express tab-level startup behavior and has been validated in live use.
 
 ## Launchd Service (optional)
 Install as a user LaunchAgent:

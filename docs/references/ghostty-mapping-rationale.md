@@ -37,3 +37,4 @@ Reduce cognitive load while using dictation + controller together by making butt
 - Mapping changes hot-reload from `config/mappings.json`; restart is not required for config-only changes.
 - If Ghostty keybindings change, update descriptions and keycodes together in `config/mappings.json`.
 - The `Share` behavior depends on Ghostty `1.3.0+` native AppleScript support and currently uses Ghostty's preview scripting API.
+- We intentionally accept that dependency because Ghostty-native actions cover the simple terminal structure controls, while AppleScript is reserved for the richer new-tab startup flow.
