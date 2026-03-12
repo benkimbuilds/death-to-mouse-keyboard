@@ -12,7 +12,8 @@ Reduce cognitive load while using dictation + controller together by making butt
 - Left thumbstick click: intentionally unassigned for now because click-plus-scroll on the same stick felt noisy in practice.
 - D-pad `Up/Down/Left/Right`: global arrow-key navigation via `alwaysOn`.
 - Right stick horizontal tilt: Ghostty-only punctuation shortcuts (`Left` = `/`, `Right` = `$`).
-- `Y`: `Cmd+Shift+G`.
+- `Share`: Ghostty AppleScript `new tab` with a custom surface configuration so the new tab opens directly into the Codex jump picker.
+- `Y`: manual Codex jump picker for the current terminal (`Cmd+Shift+G`).
 
 ## Why This Layout
 - Shoulder buttons become role-based instead of direction-based:
@@ -22,8 +23,12 @@ Reduce cognitive load while using dictation + controller together by making butt
 - Left thumbstick click is intentionally left unused until there is a cleaner role for it.
 - The D-pad is reserved for consistent global navigation across apps.
 - The right stick is a better place for Ghostty-only punctuation than the D-pad because it avoids interfering with global navigation.
+- New tabs and splits now intentionally diverge:
+  - new tab means "start somewhere else" and should open the repo chooser immediately.
+  - split means "stay in this workspace" and should inherit the current directory.
 
 ## Notes
 - `L2`, `X`, `R2`, D-pad arrows, and left-stick vertical scroll are configured in the top-level `alwaysOn` section.
 - Mapping changes hot-reload from `config/mappings.json`; restart is not required for config-only changes.
 - If Ghostty keybindings change, update descriptions and keycodes together in `config/mappings.json`.
+- The `Share` behavior depends on Ghostty `1.3.0+` native AppleScript support and currently uses Ghostty's preview scripting API.

@@ -56,8 +56,9 @@ swift run stadia-controller-bridge --config config/mappings.json --no-dry-run --
   - Right stick horizontal tilt: `Left` sends `/`, `Right` sends `$`
   - `Options`: close focused split surface (`Cmd+W`)
   - `Menu`: open `/model`
-  - `Y`: send `Cmd+Shift+G`
-  - Right thumbstick click: split right (`Cmd+D`)
+  - `Share`: open a new tab and immediately launch the Codex repo picker (`Ghostty` AppleScript; requires Ghostty `1.3.0+`)
+  - `Y`: open the Codex jump picker in the current terminal (`Cmd+Shift+G`)
+  - Right thumbstick click: split right (`Cmd+D`) and inherit the current directory
   - `L1` (`leftShoulder`): cycle split focus in current tab
   - `R1` (`rightShoulder`): cycle tabs (next tab)
 
@@ -72,6 +73,7 @@ Non-profiled apps:
 
 If your Ghostty split binding differs, edit `config/mappings.json`.
 For design intent behind the current layout, see `docs/references/ghostty-mapping-rationale.md`.
+If Ghostty AppleScript is disabled or you are on Ghostty older than `1.3.0`, the `share` mapping must be changed back to a plain keystroke or another supported action type.
 
 ## Hot Reload
 - `config/mappings.json` is watched while the bridge is running.

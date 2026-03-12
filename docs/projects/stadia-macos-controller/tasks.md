@@ -53,6 +53,7 @@ Keep Ghostty global behavior and machine bootstrap logic in `~/GitHub/scripts`; 
 - [x] Add profile-scoped analog stick controls (vertical scrolling and right-stick pointer) with deadzone/rate limiting.
 - [x] Add configurable horizontal right-stick actions so the stick can be reassigned without code changes.
 - [x] Add an explicit `alwaysOn` control set for selected buttons/analog behaviors that should bypass app matching without reintroducing a full fallback profile.
+- [x] Differentiate Ghostty new-tab and split behavior so `share` opens the repo picker in a fresh tab while split actions keep inheriting the active directory.
 - [ ] Capture Phase 2 backlog for Codex-specific profile behavior after Ghostty flow is stable.
 - [x] Review `AGENTS.md` and update if new repeatable implementation patterns were introduced (stable cross-machine service identity/path now documented).
 - [ ] Archive project notes to `docs/projects/archive/stadia-macos-controller/` when the user confirms completion.
@@ -104,6 +105,7 @@ Run in dry-run mode first to inspect resolved profile + action logs before enabl
 - 2026-03-11: [DONE] Moved the D-pad to explicit always-on arrow-key navigation and removed the Ghostty-specific D-pad overrides for model picker and punctuation.
 - 2026-03-11: [DONE] Added native `mouseClick` action support, tested left thumbstick click as an always-on left mouse click, then removed that mapping after live use showed click-plus-scroll on the same stick felt noisy.
 - 2026-03-11: [DONE] Reassigned Ghostty right-stick horizontal tilt from the failed macOS Spaces experiment to punctuation shortcuts: `Left` sends `/`, `Right` sends `$`.
+- 2026-03-12: [DONE] Switched Ghostty `share` from plain `Cmd+T` injection to Ghostty `1.3.0` AppleScript `new tab` with a custom surface configuration so new tabs launch `codex_jump` immediately, while split actions keep their inherited working directory behavior.
 
 ## Next 3 Actions
 1. Capture Phase 2 backlog for Codex-specific profile behavior now that Ghostty flow is stable.
