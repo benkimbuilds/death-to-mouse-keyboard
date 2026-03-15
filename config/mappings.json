@@ -99,10 +99,11 @@
             "description": "Open /model popup from right stick up"
           },
           "downAction": {
-            "type": "keystroke",
-            "keyCode": 44,
-            "modifiers": [],
-            "description": "Send slash (/) from right stick down"
+            "type": "text",
+            "text": "/fast",
+            "delayMs": 80,
+            "pressEnter": true,
+            "description": "Open /fast from right stick down"
           }
         },
         "rightStickHorizontalActions": {
