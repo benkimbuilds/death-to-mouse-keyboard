@@ -100,9 +100,9 @@
           },
           "downAction": {
             "type": "keystroke",
-            "keyCode": 42,
+            "keyCode": 44,
             "modifiers": [],
-            "description": "Send backslash (\\) from right stick down"
+            "description": "Send slash (/) from right stick down"
           }
         },
         "rightStickHorizontalActions": {
