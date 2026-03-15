@@ -183,19 +183,6 @@
             "description": "Send Escape"
           }
         },
-        "y": {
-          "debounceMs": 160,
-          "edgeTrigger": true,
-          "action": {
-            "type": "keystroke",
-            "keyCode": 5,
-            "modifiers": [
-              "command",
-              "shift"
-            ],
-            "description": "Open the Codex jump picker in the current Ghostty terminal"
-          }
-        },
         "leftShoulder": {
           "debounceMs": 200,
           "edgeTrigger": true,

@@ -58,7 +58,6 @@ swift run stadia-controller-bridge --config config/mappings.json --no-dry-run --
   - `Options`: close focused split surface via Ghostty native action
   - `Share`: open a new tab and immediately launch the Codex repo picker through the shared helper script (`Ghostty` AppleScript; requires Ghostty `1.3.0+`)
   - Left thumbstick click: open a right split and immediately launch the Codex repo picker through the shared helper script
-  - `Y`: open the Codex jump picker in the current terminal (`Cmd+Shift+G`)
   - Right thumbstick click: split right via Ghostty native action and inherit the current directory
   - `L1` (`leftShoulder`): cycle split focus in current tab via Ghostty native action
   - `R1` (`rightShoulder`): cycle tabs (next tab) via Ghostty native action

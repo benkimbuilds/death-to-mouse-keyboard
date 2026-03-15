@@ -14,7 +14,6 @@ Reduce cognitive load while using dictation + controller together by making butt
 - Right stick up: open `/model`.
 - Right stick horizontal tilt: Ghostty-only punctuation shortcuts (`Left` = `/`, `Right` = `$`).
 - `Share`: run the shared Ghostty picker-tab helper so the new tab opens directly into the Codex jump picker.
-- `Y`: manual Codex jump picker for the current terminal (`Cmd+Shift+G`).
 - `Options`, right thumbstick click, `L1`, and `R1` now use Ghostty native actions instead of synthetic macOS keystrokes.
 
 ## Why This Layout
@@ -22,7 +21,6 @@ Reduce cognitive load while using dictation + controller together by making butt
   - one shoulder for tabs, one shoulder for splits.
 - `X` becomes a lightweight companion key instead of a destructive or layout-changing action.
 - `L2` + `X` is a low-risk modifier experiment because it uses a held modifier with a discrete button, not an analog stick.
-- Left thumbstick click is intentionally left unused until there is a cleaner role for it.
 - The D-pad is reserved for consistent global navigation across apps.
 - The right stick now carries the quick Codex-specific prompts without consuming face buttons:
   - up is `/model`

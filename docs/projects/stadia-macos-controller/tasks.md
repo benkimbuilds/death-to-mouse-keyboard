@@ -112,6 +112,7 @@ Run in dry-run mode first to inspect resolved profile + action logs before enabl
 - 2026-03-12: [DONE] Refreshed architecture docs to explain the Ghostty boundary more clearly and documented the intentional AppleScript dependency plus the reinstall requirement for runtime/schema changes.
 - 2026-03-12: [DONE] Updated left-stick scroll so Ghostty frontmost scrolling targets Ghostty's focused terminal directly, avoiding stale mouse-cursor position when switching tabs, splits, or windows.
 - 2026-03-15: [DONE] Added a shared Ghostty split-picker helper and mapped `leftThumbstickButton` to open a right split that immediately runs `codex_jump`, while keeping `Share` as the new-tab picker action.
+- 2026-03-15: [DONE] Unassigned Ghostty `Y` so the face button is free for a future remap.
 
 ## Next 3 Actions
 1. Capture Phase 2 backlog for Codex-specific profile behavior now that Ghostty flow is stable.
