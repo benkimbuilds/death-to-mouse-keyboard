@@ -154,6 +154,15 @@
             "description": "Split right via Ghostty native action"
           }
         },
+        "leftThumbstickButton": {
+          "debounceMs": 220,
+          "edgeTrigger": true,
+          "action": {
+            "type": "shell",
+            "command": "$HOME/.agents/codex/scripts/open-ghostty-codex-picker-split.sh --direction right",
+            "description": "Split right and open the Codex repo picker in the new split"
+          }
+        },
         "a": {
           "debounceMs": 120,
           "edgeTrigger": true,

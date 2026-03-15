@@ -39,6 +39,7 @@ flowchart TD
   - `R1` -> `next_tab`
 - Ghostty AppleScript via shell helper:
   - `Share` -> run the shared helper that opens a new tab with custom startup config and immediately runs `codex_jump`
+  - left thumbstick click -> run the shared helper that opens a right split with custom startup config and immediately runs `codex_jump`
 - Plain terminal input:
   - `A` -> `Enter`
   - `B` -> `Escape`
