@@ -7,3 +7,8 @@
 !.envrc
 !.env.example
 !*.env.example
+
+# Local temp artifacts
+/tmp/
+/.tmp/
+/temp/
