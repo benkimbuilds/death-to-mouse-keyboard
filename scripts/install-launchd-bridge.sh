@@ -43,12 +43,12 @@ Options:
   --help                    Show help
 
 Examples:
-  ./scripts/install-launchd-stadia-controller-bridge.sh
-  ./scripts/install-launchd-stadia-controller-bridge.sh --sign-identity auto
-  ./scripts/install-launchd-stadia-controller-bridge.sh --sign-identity adhoc
-  ./scripts/install-launchd-stadia-controller-bridge.sh --sign-identity "Apple Development: Your Name (TEAMID)"
-  ./scripts/install-launchd-stadia-controller-bridge.sh --mode dry-run
-  ./scripts/install-launchd-stadia-controller-bridge.sh --repo-dir ~/GitHub/stadia-macos-controller
+  ./scripts/install-launchd-bridge.sh
+  ./scripts/install-launchd-bridge.sh --sign-identity auto
+  ./scripts/install-launchd-bridge.sh --sign-identity adhoc
+  ./scripts/install-launchd-bridge.sh --sign-identity "Apple Development: Your Name (TEAMID)"
+  ./scripts/install-launchd-bridge.sh --mode dry-run
+  ./scripts/install-launchd-bridge.sh --repo-dir ~/GitHub/stadia-macos-controller
 USAGE
 }
 

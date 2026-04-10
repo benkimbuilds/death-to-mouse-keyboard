@@ -991,6 +991,12 @@ final class ActionExecutor {
 }
 
 final class ControllerBridge: NSObject {
+    private struct PendingComboButton {
+        let event: ControllerEvent
+        let activeProfileName: String?
+        let bundleID: String
+    }
+
     private var config: BridgeConfig
     private var profileResolver: ProfileResolver
     private var actionExecutor: ActionExecutor
@@ -998,6 +1004,8 @@ final class ControllerBridge: NSObject {
     private let configPath: String
     private let dryRunOverride: Bool?
     private let diagnoseController: Bool
+    private let thumbstickComboButtons: Set<String> = ["leftThumbstickButton", "rightThumbstickButton"]
+    private let thumbstickComboWindowMs = 140
 
     private var buttonStates: [String: Bool] = [:]
     private var lastTriggeredAt: [String: Date] = [:]
@@ -1012,6 +1020,8 @@ final class ControllerBridge: NSObject {
     private var configWatchTimer: Timer?
     private var configLastModified: Date?
     private var activeHolds: [String: (profileName: String, action: ActionConfig)] = [:]
+    private var pendingComboButtons: [String: PendingComboButton] = [:]
+    private var consumedComboButtons: Set<String> = []
     private var bridgeEnabled = true
 
     init(
@@ -1113,6 +1123,8 @@ final class ControllerBridge: NSObject {
         polledButtonStates = polledButtonStates.filter { !$0.key.hasPrefix("\(controllerID)::") }
         analogDirectionStates = analogDirectionStates.filter { !$0.key.hasPrefix("\(controllerID)::") }
         activeHolds = activeHolds.filter { !$0.key.hasPrefix("\(controllerID)::") }
+        pendingComboButtons = pendingComboButtons.filter { !$0.key.hasPrefix("\(controllerID)::") }
+        consumedComboButtons = Set(consumedComboButtons.filter { !$0.hasPrefix("\(controllerID)::") })
         print("Controller disconnected: \(controllerID)")
     }
 
@@ -1213,6 +1225,8 @@ final class ControllerBridge: NSObject {
 
     @objc
     private func pollControllers() {
+        flushPendingThumbstickSingles()
+
         for (controllerID, gamepad) in activeGamepads {
             pollButton(controllerID: controllerID, buttonName: "a", pressed: gamepad.buttonA.isPressed)
             pollButton(controllerID: controllerID, buttonName: "b", pressed: gamepad.buttonB.isPressed)
@@ -1757,6 +1771,105 @@ final class ControllerBridge: NSObject {
         print("[INFO] Requested macOS Accessibility permission prompt for this terminal app.")
     }
 
+    private func flushPendingThumbstickSingles() {
+        let now = Date()
+        let readyEntries = pendingComboButtons
+            .filter { _, pending in
+                Int(now.timeIntervalSince(pending.event.timestamp) * 1000) >= thumbstickComboWindowMs
+            }
+            .sorted { $0.value.event.timestamp < $1.value.event.timestamp }
+
+        for (stateKey, pending) in readyEntries {
+            pendingComboButtons.removeValue(forKey: stateKey)
+            executeButtonPress(
+                event: pending.event,
+                activeProfileName: pending.activeProfileName,
+                bundleID: pending.bundleID
+            )
+        }
+    }
+
+    private func handleThumbstickComboPress(event: ControllerEvent, activeProfileName: String?, bundleID: String) {
+        let stateKey = "\(event.controllerID)::\(event.button)"
+        let otherButton = event.button == "leftThumbstickButton" ? "rightThumbstickButton" : "leftThumbstickButton"
+        let otherStateKey = "\(event.controllerID)::\(otherButton)"
+
+        if let otherPending = pendingComboButtons.removeValue(forKey: otherStateKey) {
+            pendingComboButtons.removeValue(forKey: stateKey)
+            consumedComboButtons.insert(stateKey)
+            consumedComboButtons.insert(otherStateKey)
+
+            let comboEvent = ControllerEvent(
+                controllerID: event.controllerID,
+                button: "thumbsticksBoth",
+                pressed: true,
+                timestamp: max(event.timestamp, otherPending.event.timestamp),
+                isRepeat: false
+            )
+
+            print("[COMBO] controller=\(event.controllerID) buttons=leftThumbstickButton+rightThumbstickButton")
+            executeButtonPress(
+                event: comboEvent,
+                activeProfileName: activeProfileName,
+                bundleID: bundleID
+            )
+            return
+        }
+
+        pendingComboButtons[stateKey] = PendingComboButton(
+            event: event,
+            activeProfileName: activeProfileName,
+            bundleID: bundleID
+        )
+    }
+
+    private func executeButtonPress(event: ControllerEvent, activeProfileName: String?, bundleID: String) {
+        guard let resolved = resolveMapping(forButton: event.button, activeProfileName: activeProfileName) else {
+            if let activeProfileName {
+                print("[SKIP] no mapping profile=\(activeProfileName) bundle=\(bundleID) button=\(event.button)")
+            } else {
+                print("[SKIP] no active app profile bundle=\(bundleID) button=\(event.button)")
+            }
+            return
+        }
+
+        print("[MAP] profile=\(resolved.profileName) bundle=\(bundleID) button=\(event.button)")
+
+        if event.isRepeat && resolved.mapping.edgeTrigger != false {
+            return
+        }
+
+        let stateKey = "\(event.controllerID)::\(event.button)"
+        if resolved.mapping.action.type == .holdKeystroke {
+            do {
+                try actionExecutor.beginHold(action: resolved.mapping.action, profile: resolved.profileName, button: event.button)
+                activeHolds[stateKey] = (resolved.profileName, resolved.mapping.action)
+            } catch {
+                print("[ERROR] hold begin failed: \(error.localizedDescription)")
+            }
+            return
+        }
+
+        let debounceMs = resolved.mapping.debounceMs ?? 200
+        let debounceKey = "\(resolved.profileName)::\(event.button)"
+
+        if let last = lastTriggeredAt[debounceKey] {
+            let deltaMs = Int(event.timestamp.timeIntervalSince(last) * 1000)
+            if deltaMs < debounceMs {
+                print("[SKIP] debounce profile=\(resolved.profileName) button=\(event.button) deltaMs=\(deltaMs)")
+                return
+            }
+        }
+
+        do {
+            try actionExecutor.execute(action: resolved.mapping.action, profile: resolved.profileName, button: event.button)
+            tryFocusAfterScreenChange(button: event.button, profileName: resolved.profileName)
+            lastTriggeredAt[debounceKey] = event.timestamp
+        } catch {
+            print("[ERROR] action failed: \(error.localizedDescription)")
+        }
+    }
+
     private func handleButtonEvent(controllerID: String, buttonName: String, pressed: Bool) {
         let now = Date()
         let stateKey = "\(controllerID)::\(buttonName)"
@@ -1775,6 +1888,17 @@ final class ControllerBridge: NSObject {
         print("[EVENT] controller=\(event.controllerID) button=\(event.button) pressed=\(event.pressed) repeat=\(event.isRepeat)")
 
         guard event.pressed else {
+            if consumedComboButtons.remove(stateKey) != nil {
+                return
+            }
+            if let pending = pendingComboButtons.removeValue(forKey: stateKey) {
+                executeButtonPress(
+                    event: pending.event,
+                    activeProfileName: pending.activeProfileName,
+                    bundleID: pending.bundleID
+                )
+                return
+            }
             if let held = activeHolds.removeValue(forKey: stateKey) {
                 do {
                     try actionExecutor.endHold(action: held.action, profile: held.profileName, button: event.button)
@@ -1800,50 +1924,12 @@ final class ControllerBridge: NSObject {
         }
 
         let activeProfileName = profileResolver.resolveActiveProfile()
-
-        guard let resolved = resolveMapping(forButton: event.button, activeProfileName: activeProfileName) else {
-            if let activeProfileName {
-                print("[SKIP] no mapping profile=\(activeProfileName) bundle=\(bundleID) button=\(event.button)")
-            } else {
-                print("[SKIP] no active app profile bundle=\(bundleID) button=\(event.button)")
-            }
+        if thumbstickComboButtons.contains(buttonName) {
+            handleThumbstickComboPress(event: event, activeProfileName: activeProfileName, bundleID: bundleID)
             return
         }
 
-        print("[MAP] profile=\(resolved.profileName) bundle=\(bundleID) button=\(event.button)")
-
-        if event.isRepeat && resolved.mapping.edgeTrigger != false {
-            return
-        }
-
-        if resolved.mapping.action.type == .holdKeystroke {
-            do {
-                try actionExecutor.beginHold(action: resolved.mapping.action, profile: resolved.profileName, button: event.button)
-                activeHolds[stateKey] = (resolved.profileName, resolved.mapping.action)
-            } catch {
-                print("[ERROR] hold begin failed: \(error.localizedDescription)")
-            }
-            return
-        }
-
-        let debounceMs = resolved.mapping.debounceMs ?? 200
-        let debounceKey = "\(resolved.profileName)::\(event.button)"
-
-        if let last = lastTriggeredAt[debounceKey] {
-            let deltaMs = Int(now.timeIntervalSince(last) * 1000)
-            if deltaMs < debounceMs {
-                print("[SKIP] debounce profile=\(resolved.profileName) button=\(event.button) deltaMs=\(deltaMs)")
-                return
-            }
-        }
-
-        do {
-            try actionExecutor.execute(action: resolved.mapping.action, profile: resolved.profileName, button: event.button)
-            tryFocusAfterScreenChange(button: event.button, profileName: resolved.profileName)
-            lastTriggeredAt[debounceKey] = now
-        } catch {
-            print("[ERROR] action failed: \(error.localizedDescription)")
-        }
+        executeButtonPress(event: event, activeProfileName: activeProfileName, bundleID: bundleID)
     }
 
     private func resolveMapping(forButton button: String, activeProfileName: String?) -> (profileName: String, mapping: MappingConfig)? {

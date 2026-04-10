@@ -117,21 +117,21 @@ Install as a user LaunchAgent:
 
 ```bash
 cd ~/GitHub/scripts
-./setup/stadia/install-launchd-stadia-controller-bridge.sh --mode live
+./scripts/install-launchd-bridge.sh --mode live
 ```
 
 Uninstall:
 
 ```bash
 cd ~/GitHub/scripts
-./setup/stadia/uninstall-launchd-stadia-controller-bridge.sh
+./scripts/uninstall-launchd-bridge.sh
 ```
 
 Verify:
 
 ```bash
 cd ~/GitHub/scripts
-./setup/stadia/verify-launchd-stadia-controller-bridge.sh
+./scripts/verify-launchd-bridge.sh
 ```
 
 ## Troubleshooting (Recurring Issues)

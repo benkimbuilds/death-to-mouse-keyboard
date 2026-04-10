@@ -205,6 +205,15 @@
             "description": "Split down via Ghostty native action"
           }
         },
+        "thumbsticksBoth": {
+          "debounceMs": 220,
+          "edgeTrigger": true,
+          "action": {
+            "type": "ghosttyAction",
+            "ghosttyAction": "new_tab",
+            "description": "Open a new Ghostty tab when both thumbstick buttons are pressed together"
+          }
+        },
         "a": {
           "edgeTrigger": true,
           "action": {

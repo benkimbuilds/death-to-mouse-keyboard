@@ -7,9 +7,9 @@ Use this page for repo-level commands, file map notes, and runtime contracts.
 - `config/mappings.json`: source of truth for app profiles, `alwaysOn` controls, per-profile mappings, and safety defaults.
 - `scripts/run-bridge.sh`: local `swift run` wrapper.
 - `scripts/check-fast.sh`: fast repo validation for merge markers and Swift package manifest parsing.
-- `scripts/install-launchd-stadia-controller-bridge.sh`: project-local fallback installer for the bridge LaunchAgent.
-- `scripts/verify-launchd-stadia-controller-bridge.sh`: project-local fallback verifier for launchd wiring, staged runtime path, and signing identifier.
-- `scripts/uninstall-launchd-stadia-controller-bridge.sh`: project-local fallback cleanup for bridge LaunchAgents.
+- `scripts/install-launchd-bridge.sh`: project-local fallback installer for the bridge LaunchAgent.
+- `scripts/verify-launchd-bridge.sh`: project-local fallback verifier for launchd wiring, staged runtime path, and signing identifier.
+- `scripts/uninstall-launchd-bridge.sh`: project-local fallback cleanup for bridge LaunchAgents.
 - `docs/architecture/`: subsystem shape, boundaries, and runtime flow.
 - `docs/references/`: durable commands, config contracts, and operational lookup notes.
 
@@ -20,7 +20,7 @@ Use this page for repo-level commands, file map notes, and runtime contracts.
   - `launchctl print gui/$(id -u)/com.stadia-controller-bridge`
   - a live controller button press check against the changed behavior
 - After install or reinstall work, prefer `~/GitHub/scripts/setup/stadia/verify-launchd-stadia-controller-bridge.sh`.
-- If the shared machine-level wrapper is unavailable, use `./scripts/verify-launchd-stadia-controller-bridge.sh`.
+- If the shared machine-level wrapper is unavailable, use `./scripts/verify-launchd-bridge.sh`.
 
 ## Runtime And Install Contracts
 - This repo owns bridge code and `config/mappings.json`.

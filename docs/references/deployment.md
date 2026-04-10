@@ -31,7 +31,7 @@ Project-local fallback (equivalent):
 
 ```bash
 cd ~/GitHub/stadia-macos-controller
-./scripts/install-launchd-stadia-controller-bridge.sh --mode live
+./scripts/install-launchd-bridge.sh --mode live
 ```
 
 For safer testing first:

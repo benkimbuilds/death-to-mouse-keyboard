@@ -109,6 +109,7 @@ Behavior note:
 - `menu`, `options`
 - `home`, `share` (Assistant/Capture on Stadia controller)
 - `leftThumbstickButton`, `rightThumbstickButton`
+- `thumbsticksBoth` (virtual combo fired when both thumbstick buttons are pressed together)
 
 Availability note:
 - A button name can be valid in config but never emit events at runtime if macOS does not expose that physical control via `GameController` for the current device/connection mode.
