@@ -8,11 +8,13 @@ struct CLIOptions {
     let configPath: String
     let dryRunOverride: Bool?
     let promptAccessibility: Bool
+    let diagnoseController: Bool
 
     static func parse(arguments: [String]) throws -> CLIOptions {
         var configPath = "config/mappings.json"
         var dryRunOverride: Bool?
         var promptAccessibility = false
+        var diagnoseController = false
 
         var index = 1
         while index < arguments.count {
@@ -37,6 +39,9 @@ struct CLIOptions {
             case "--prompt-accessibility":
                 promptAccessibility = true
                 index += 1
+            case "--diagnose-controller":
+                diagnoseController = true
+                index += 1
             default:
                 throw BridgeError.invalidArguments("Unknown argument: \(argument)")
             }
@@ -45,7 +50,8 @@ struct CLIOptions {
         return CLIOptions(
             configPath: configPath,
             dryRunOverride: dryRunOverride,
-            promptAccessibility: promptAccessibility
+            promptAccessibility: promptAccessibility,
+            diagnoseController: diagnoseController
         )
     }
 
@@ -61,6 +67,7 @@ struct CLIOptions {
           --dry-run         Force dry-run mode (no key/command execution)
           --no-dry-run      Force live mode
           --prompt-accessibility  Ask macOS to show Accessibility permission prompt
+          --diagnose-controller   Print controller capabilities and analog telemetry
           --help, -h        Show this help text
         """
         print(help)
@@ -863,11 +870,13 @@ final class ControllerBridge: NSObject {
 
     private let configPath: String
     private let dryRunOverride: Bool?
+    private let diagnoseController: Bool
 
     private var buttonStates: [String: Bool] = [:]
     private var lastTriggeredAt: [String: Date] = [:]
     private var lastAnalogScrollAt: [String: Date] = [:]
     private var lastAnalogActionAt: [String: Date] = [:]
+    private var lastDiagnosticAnalogValues: [String: Double] = [:]
     private var polledButtonStates: [String: Bool] = [:]
     private var analogDirectionStates: [String: Int] = [:]
     private var activeGamepads: [String: GCExtendedGamepad] = [:]
@@ -878,17 +887,27 @@ final class ControllerBridge: NSObject {
     private var activeHolds: [String: (profileName: String, action: ActionConfig)] = [:]
     private var bridgeEnabled = true
 
-    init(config: BridgeConfig, configPath: String, dryRunOverride: Bool?, promptAccessibility: Bool) {
+    init(
+        config: BridgeConfig,
+        configPath: String,
+        dryRunOverride: Bool?,
+        promptAccessibility: Bool,
+        diagnoseController: Bool
+    ) {
         self.config = config
         self.profileResolver = ProfileResolver(appProfiles: config.appProfiles)
         self.configPath = configPath
         self.dryRunOverride = dryRunOverride
+        self.diagnoseController = diagnoseController
 
         let dryRun = Self.effectiveDryRun(for: config, dryRunOverride: dryRunOverride)
         self.actionExecutor = ActionExecutor(dryRun: dryRun)
         super.init()
 
         print("Bridge mode: \(dryRun ? "dry-run" : "live")")
+        if diagnoseController {
+            print("[INFO] Controller diagnostic mode enabled")
+        }
         if !dryRun && !AXIsProcessTrusted() {
             print("WARNING: Accessibility permission is not granted. Keystroke actions will fail until enabled.")
             if promptAccessibility {
@@ -911,7 +930,7 @@ final class ControllerBridge: NSObject {
 
         let existingControllers = GCController.controllers()
         if existingControllers.isEmpty {
-            print("No controller currently connected. Waiting for Stadia controller...")
+            print("No controller currently connected. Waiting for a compatible game controller...")
         } else {
             existingControllers.forEach(registerHandlers)
         }
@@ -963,6 +982,7 @@ final class ControllerBridge: NSObject {
         buttonStates = buttonStates.filter { !$0.key.hasPrefix("\(controllerID)::") }
         lastAnalogScrollAt = lastAnalogScrollAt.filter { !$0.key.hasPrefix("\(controllerID)::") }
         lastAnalogActionAt = lastAnalogActionAt.filter { !$0.key.hasPrefix("\(controllerID)::") }
+        lastDiagnosticAnalogValues = lastDiagnosticAnalogValues.filter { !$0.key.hasPrefix("\(controllerID)::") }
         polledButtonStates = polledButtonStates.filter { !$0.key.hasPrefix("\(controllerID)::") }
         analogDirectionStates = analogDirectionStates.filter { !$0.key.hasPrefix("\(controllerID)::") }
         activeHolds = activeHolds.filter { !$0.key.hasPrefix("\(controllerID)::") }
@@ -977,6 +997,10 @@ final class ControllerBridge: NSObject {
         guard let gamepad = controller.extendedGamepad else {
             print("Controller \(controllerID) does not expose extended gamepad profile; ignoring")
             return
+        }
+
+        if diagnoseController {
+            printControllerDiagnostics(controllerID: controllerID, controller: controller, gamepad: gamepad)
         }
 
         activeGamepads[controllerID] = gamepad
@@ -1099,11 +1123,109 @@ final class ControllerBridge: NSObject {
             pollButton(controllerID: controllerID, buttonName: "dpadDown", pressed: gamepad.dpad.down.isPressed)
             pollButton(controllerID: controllerID, buttonName: "dpadLeft", pressed: gamepad.dpad.left.isPressed)
             pollButton(controllerID: controllerID, buttonName: "dpadRight", pressed: gamepad.dpad.right.isPressed)
+            if diagnoseController {
+                pollDiagnosticAnalogs(controllerID: controllerID, gamepad: gamepad)
+            }
             pollConfiguredVerticalScroll(controllerID: controllerID, gamepad: gamepad)
             pollConfiguredPointerMove(controllerID: controllerID, gamepad: gamepad)
             pollConfiguredVerticalActions(controllerID: controllerID, gamepad: gamepad)
             pollConfiguredHorizontalActions(controllerID: controllerID, gamepad: gamepad)
         }
+    }
+
+    private func printControllerDiagnostics(
+        controllerID: String,
+        controller: GCController,
+        gamepad: GCExtendedGamepad
+    ) {
+        let vendor = controller.vendorName ?? "Unknown Vendor"
+        let productCategory = controller.productCategory
+        let availableButtons = availableBridgeButtons(controller: controller, gamepad: gamepad)
+        let physicalElements = controller.physicalInputProfile.elements.keys.sorted()
+
+        print("[DIAG] controller=\(controllerID) vendor=\(vendor) productCategory=\(productCategory)")
+        print("[DIAG] controller=\(controllerID) profile=extendedGamepad")
+        print("[DIAG] controller=\(controllerID) bridge-buttons=\(availableButtons.joined(separator: ", "))")
+        print("[DIAG] controller=\(controllerID) physical-elements=\(physicalElements.joined(separator: ", "))")
+        print("[DIAG] PlayStation layout note: a=Cross, b=Circle, x=Square, y=Triangle")
+    }
+
+    private func availableBridgeButtons(
+        controller: GCController,
+        gamepad: GCExtendedGamepad
+    ) -> [String] {
+        var buttons = [
+            "a",
+            "b",
+            "dpadDown",
+            "dpadLeft",
+            "dpadRight",
+            "dpadUp",
+            "leftShoulder",
+            "leftTrigger",
+            "menu",
+            "rightShoulder",
+            "rightTrigger",
+            "x",
+            "y"
+        ]
+
+        if gamepad.buttonOptions != nil {
+            buttons.append("options")
+        }
+        if gamepad.leftThumbstickButton != nil {
+            buttons.append("leftThumbstickButton")
+        }
+        if gamepad.rightThumbstickButton != nil {
+            buttons.append("rightThumbstickButton")
+        }
+        if controller.physicalInputProfile.elements[GCInputButtonHome] as? GCControllerButtonInput != nil {
+            buttons.append("home")
+        }
+        if controller.physicalInputProfile.elements[GCInputButtonShare] as? GCControllerButtonInput != nil {
+            buttons.append("share")
+        }
+
+        return buttons.sorted()
+    }
+
+    private func pollDiagnosticAnalogs(controllerID: String, gamepad: GCExtendedGamepad) {
+        reportDiagnosticAnalog(controllerID: controllerID, name: "leftStickX", value: Double(gamepad.leftThumbstick.xAxis.value))
+        reportDiagnosticAnalog(controllerID: controllerID, name: "leftStickY", value: Double(gamepad.leftThumbstick.yAxis.value))
+        reportDiagnosticAnalog(controllerID: controllerID, name: "rightStickX", value: Double(gamepad.rightThumbstick.xAxis.value))
+        reportDiagnosticAnalog(controllerID: controllerID, name: "rightStickY", value: Double(gamepad.rightThumbstick.yAxis.value))
+        reportDiagnosticAnalog(controllerID: controllerID, name: "leftTriggerValue", value: Double(gamepad.leftTrigger.value))
+        reportDiagnosticAnalog(controllerID: controllerID, name: "rightTriggerValue", value: Double(gamepad.rightTrigger.value))
+    }
+
+    private func reportDiagnosticAnalog(controllerID: String, name: String, value: Double) {
+        let stateKey = "\(controllerID)::\(name)"
+        let roundedValue = (value * 100).rounded() / 100
+        let previous = lastDiagnosticAnalogValues[stateKey]
+        lastDiagnosticAnalogValues[stateKey] = roundedValue
+
+        guard shouldLogDiagnosticAnalog(previous: previous, current: roundedValue) else {
+            return
+        }
+
+        print("[DIAG] controller=\(controllerID) analog=\(name) value=\(String(format: "%.2f", roundedValue))")
+    }
+
+    private func shouldLogDiagnosticAnalog(previous: Double?, current: Double) -> Bool {
+        let activationThreshold = 0.15
+        let changeThreshold = 0.25
+
+        guard let previous else {
+            return abs(current) >= activationThreshold
+        }
+
+        let wasActive = abs(previous) >= activationThreshold
+        let isActive = abs(current) >= activationThreshold
+        if wasActive != isActive {
+            return true
+        }
+
+        return isActive && abs(current - previous) >= changeThreshold
     }
 
     private func pollPhysicalButton(
@@ -1626,7 +1748,8 @@ func run() throws {
         config: config,
         configPath: configPath,
         dryRunOverride: options.dryRunOverride,
-        promptAccessibility: options.promptAccessibility
+        promptAccessibility: options.promptAccessibility,
+        diagnoseController: options.diagnoseController
     )
     bridge.start()
 }

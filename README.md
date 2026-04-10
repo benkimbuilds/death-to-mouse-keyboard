@@ -1,10 +1,15 @@
 # Stadia macOS Controller Bridge
 
 ## What This Does (Simple)
-- Reads Stadia controller input on macOS.
+- Reads compatible game controller input on macOS.
 - Runs a local bridge service.
 - Converts mapped button presses into keystrokes, Ghostty native actions, or other configured actions.
 - Sends those actions to Ghostty.
+
+## Useful Command
+```bash
+swift run stadia-controller-bridge --config config/mappings.json --diagnose-controller
+```
 
 ## Simple Flow (Mermaid)
 ```mermaid

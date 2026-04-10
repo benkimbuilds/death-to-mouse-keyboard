@@ -16,19 +16,28 @@
     },
     "mappings": {
       "rightTrigger": {
+        "debounceMs": 180,
+        "edgeTrigger": true,
         "action": {
-          "type": "holdKeystroke",
-          "keyCode": 111,
-          "modifiers": [],
-          "description": "Hold to mimic F12"
+          "type": "keystroke",
+          "keyCode": 48,
+          "modifiers": [
+            "control"
+          ],
+          "description": "Send Control-Tab"
         }
       },
       "leftTrigger": {
+        "debounceMs": 180,
+        "edgeTrigger": true,
         "action": {
-          "type": "holdKeystroke",
-          "keyCode": 55,
-          "modifiers": [],
-          "description": "Hold Command modifier"
+          "type": "keystroke",
+          "keyCode": 48,
+          "modifiers": [
+            "shift",
+            "control"
+          ],
+          "description": "Send Shift-Control-Tab"
         }
       },
       "x": {
@@ -39,6 +48,16 @@
           "keyCode": 48,
           "modifiers": [],
           "description": "Send Tab (L2 + X behaves like Cmd+Tab)"
+        }
+      },
+      "y": {
+        "debounceMs": 120,
+        "edgeTrigger": true,
+        "action": {
+          "type": "keystroke",
+          "keyCode": 53,
+          "modifiers": [],
+          "description": "Send Escape everywhere"
         }
       },
       "dpadUp": {
@@ -155,15 +174,24 @@
           }
         },
         "leftThumbstickButton": {
-          "debounceMs": 220,
+          "debounceMs": 180,
           "edgeTrigger": true,
           "action": {
-            "type": "shell",
-            "command": "$HOME/.agents/codex/scripts/open-ghostty-codex-picker-split.sh --direction right",
-            "description": "Split right and open the Codex repo picker in the new split"
+            "type": "ghosttyAction",
+            "ghosttyAction": "new_split:down",
+            "description": "Split down via Ghostty native action"
           }
         },
         "a": {
+          "edgeTrigger": true,
+          "action": {
+            "type": "holdKeystroke",
+            "keyCode": 49,
+            "modifiers": [],
+            "description": "Hold Space for dictation"
+          }
+        },
+        "b": {
           "debounceMs": 120,
           "edgeTrigger": true,
           "action": {
@@ -173,14 +201,40 @@
             "description": "Send Enter"
           }
         },
-        "b": {
-          "debounceMs": 120,
+        "dpadUp": {
+          "debounceMs": 160,
           "edgeTrigger": true,
           "action": {
-            "type": "keystroke",
-            "keyCode": 53,
-            "modifiers": [],
-            "description": "Send Escape"
+            "type": "ghosttyAction",
+            "ghosttyAction": "goto_split:up",
+            "description": "Focus the split above"
+          }
+        },
+        "dpadDown": {
+          "debounceMs": 160,
+          "edgeTrigger": true,
+          "action": {
+            "type": "ghosttyAction",
+            "ghosttyAction": "goto_split:down",
+            "description": "Focus the split below"
+          }
+        },
+        "dpadLeft": {
+          "debounceMs": 160,
+          "edgeTrigger": true,
+          "action": {
+            "type": "ghosttyAction",
+            "ghosttyAction": "goto_split:left",
+            "description": "Focus the split to the left"
+          }
+        },
+        "dpadRight": {
+          "debounceMs": 160,
+          "edgeTrigger": true,
+          "action": {
+            "type": "ghosttyAction",
+            "ghosttyAction": "goto_split:right",
+            "description": "Focus the split to the right"
           }
         },
         "leftShoulder": {
@@ -197,8 +251,8 @@
           "edgeTrigger": true,
           "action": {
             "type": "ghosttyAction",
-            "ghosttyAction": "next_tab",
-            "description": "Cycle tabs via Ghostty native action"
+            "ghosttyAction": "goto_split:previous",
+            "description": "Cycle splits backward via Ghostty native action"
           }
         }
       }

@@ -1,6 +1,6 @@
 # Bridge Overview
 
-This repo is a small local input bridge. The Stadia controller is the input device, `ControllerBridge` owns runtime orchestration, `ProfileResolver` chooses the active app profile, and `ActionExecutor` dispatches the mapped action to Ghostty or macOS. The bridge does not try to be a full automation platform. It loads config, watches for changes, resolves the frontmost app, and executes the smallest thing needed.
+This repo is a small local input bridge. A compatible macOS `GameController` device is the input source, `ControllerBridge` owns runtime orchestration, `ProfileResolver` chooses the active app profile, and `ActionExecutor` dispatches the mapped action to Ghostty or macOS. The bridge does not try to be a full automation platform. It loads config, watches for changes, resolves the frontmost app, and executes the smallest thing needed.
 
 ```mermaid
 flowchart TD

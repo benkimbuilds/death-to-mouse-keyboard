@@ -2,7 +2,7 @@
 
 ## Prerequisites
 - macOS with Xcode CLI tools installed.
-- Stadia controller connected (USB or wireless).
+- A compatible controller connected through macOS `GameController` (USB or wireless).
 
 ## Run in Dry-Run Mode (default)
 ```bash
@@ -14,6 +14,29 @@ or:
 ```bash
 ./scripts/run-bridge.sh
 ```
+
+## Controller Diagnostics
+Use this when connecting a new controller such as a PS5 DualSense and you want to see what macOS
+is actually exposing through `GameController`:
+
+```bash
+swift run stadia-controller-bridge --config config/mappings.json --diagnose-controller
+```
+
+What this prints:
+- controller vendor/category on connect
+- the bridge button names available for mapping
+- raw `physicalInputProfile` element names from macOS
+- analog telemetry for stick and trigger movement once values move past a useful threshold
+
+PlayStation layout note:
+- `a` = Cross
+- `b` = Circle
+- `x` = Square
+- `y` = Triangle
+
+Use the diagnostic output to confirm whether `options`, `share`, `home`, and thumbstick clicks are
+present on your connection mode before editing mappings.
 
 ## Run in Live Mode
 ```bash
