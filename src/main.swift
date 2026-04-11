@@ -752,6 +752,11 @@ final class ActionExecutor {
             throw BridgeError.actionExecutionFailed("No frontmost application found for focus")
         }
 
+        if app.bundleIdentifier == ghosttyBundleID {
+            print("[ACTION] focus-frontmost-window skipped for Ghostty profile=\(profile) source=\(source)")
+            return
+        }
+
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         let windowElement = try focusedOrMainWindow(for: appElement)
         let frame = try frame(for: windowElement)
@@ -772,6 +777,8 @@ final class ActionExecutor {
                 return partial.union(.maskAlternate)
             case "control", "ctrl":
                 return partial.union(.maskControl)
+            case "function", "fn", "globe":
+                return partial.union(.maskSecondaryFn)
             default:
                 return partial
             }

@@ -104,18 +104,26 @@
         "debounceMs": 180,
         "edgeTrigger": true,
         "action": {
-          "type": "applescript",
-          "script": "tell application \"System Events\" to key code 123 using {control down}",
-          "description": "Move to the previous macOS space/display via System Events"
+          "type": "keystroke",
+          "keyCode": 123,
+          "modifiers": [
+            "control",
+            "function"
+          ],
+          "description": "Move to the previous macOS space/display"
         }
       },
       "rightShoulder": {
         "debounceMs": 180,
         "edgeTrigger": true,
         "action": {
-          "type": "applescript",
-          "script": "tell application \"System Events\" to key code 124 using {control down}",
-          "description": "Move to the next macOS space/display via System Events"
+          "type": "keystroke",
+          "keyCode": 124,
+          "modifiers": [
+            "control",
+            "function"
+          ],
+          "description": "Move to the next macOS space/display"
         }
       }
     }
