@@ -158,12 +158,21 @@
         "leftStickPointer": {
           "enabled": true,
           "deadzone": 0.24,
-          "intervalMs": 18,
-          "minPixelsPerTick": 2,
-          "maxPixelsPerTick": 24,
+          "intervalMs": 16,
+          "minPixelsPerTick": 4,
+          "maxPixelsPerTick": 48,
           "responseExponent": 2.2,
           "invertX": false,
           "invertY": true
+        },
+        "rightStickVerticalScroll": {
+          "enabled": true,
+          "deadzone": 0.18,
+          "intervalMs": 35,
+          "minLinesPerTick": 1,
+          "maxLinesPerTick": 10,
+          "responseExponent": 2.0,
+          "invert": false
         }
       },
       "mappings": {

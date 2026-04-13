@@ -95,6 +95,7 @@ Non-profiled apps:
 
 Arc profile defaults:
 - Left stick moves the cursor.
+- Right stick scrolls vertically.
 - `L2` and `R2` send `Shift-Control-Tab` and `Control-Tab`.
 - `B` clicks at the current cursor location.
 - `X` refreshes the current page (`Cmd-R`).
