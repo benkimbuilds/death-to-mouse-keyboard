@@ -194,6 +194,14 @@ struct ControllerEvent {
     let isRepeat: Bool
 }
 
+struct BridgeStatusSnapshot {
+    let controllerCount: Int
+    let bridgeEnabled: Bool
+    let dryRun: Bool
+    let activeProfileName: String?
+    let frontmostBundleID: String?
+}
+
 enum BridgeError: Error, LocalizedError {
     case invalidArguments(String)
     case configLoadFailed(String)
@@ -1225,7 +1233,7 @@ final class ActionExecutor {
 
         let displayID = CGDirectDisplayID(screenNumber.uint32Value)
         let frame = screen.visibleFrame
-        let localPoint = CGPoint(x: frame.width / 2.0, y: frame.height / 2.0)
+        let localPoint = CGPoint(x: max(0, (frame.width / 2.0) - 10.0), y: frame.height / 2.0)
         CGDisplayMoveCursorToPoint(displayID, localPoint)
         print("[ACTION] pointer-screen-center profile=\(profile) source=\(source) displayID=\(displayID) x=\(Int(localPoint.x)) y=\(Int(localPoint.y))")
     }
@@ -1436,8 +1444,17 @@ final class ControllerBridge: NSObject {
             print("Wireless discovery finished")
         }
 
-        print("Bridge started. Press Ctrl+C to stop.")
-        RunLoop.main.run()
+        print("Bridge started.")
+    }
+
+    func statusSnapshot() -> BridgeStatusSnapshot {
+        BridgeStatusSnapshot(
+            controllerCount: activeControllers.count,
+            bridgeEnabled: bridgeEnabled,
+            dryRun: Self.effectiveDryRun(for: config, dryRunOverride: dryRunOverride),
+            activeProfileName: profileResolver.resolveActiveProfile(),
+            frontmostBundleID: profileResolver.currentFrontmostBundleID()
+        )
     }
 
     private static func effectiveDryRun(for config: BridgeConfig, dryRunOverride: Bool?) -> Bool {
@@ -2444,10 +2461,140 @@ final class ControllerBridge: NSObject {
     }
 }
 
+@MainActor
+final class StatusItemController: NSObject {
+    private let bridge: ControllerBridge
+    private let statusItem: NSStatusItem
+    private let statusMenu = NSMenu()
+    private let controllersItem = NSMenuItem(title: "Controllers: 0", action: nil, keyEquivalent: "")
+    private let profileItem = NSMenuItem(title: "Profile: none", action: nil, keyEquivalent: "")
+    private let modeItem = NSMenuItem(title: "Mode: Live", action: nil, keyEquivalent: "")
+    private let focusItem = NSMenuItem(title: "Frontmost: unknown", action: nil, keyEquivalent: "")
+    private var refreshTimer: Timer?
+    private let restartMode: RestartMode
+
+    private enum RestartMode {
+        case launchd(label: String, domain: String)
+        case manual(executablePath: String, arguments: [String], workingDirectory: String)
+    }
+
+    init(bridge: ControllerBridge) {
+        self.bridge = bridge
+        self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        self.restartMode = StatusItemController.detectRestartMode()
+        super.init()
+        configureStatusItem()
+        refresh(nil)
+        refreshTimer = Timer.scheduledTimer(timeInterval: 0.75, target: self, selector: #selector(refresh(_:)), userInfo: nil, repeats: true)
+        if let refreshTimer {
+            RunLoop.main.add(refreshTimer, forMode: .common)
+        }
+    }
+
+    private func configureStatusItem() {
+        if let button = statusItem.button {
+            button.title = "SC"
+            button.toolTip = "Stadia Controller Bridge"
+        }
+
+        controllersItem.isEnabled = false
+        profileItem.isEnabled = false
+        modeItem.isEnabled = false
+        focusItem.isEnabled = false
+
+        statusMenu.addItem(controllersItem)
+        statusMenu.addItem(profileItem)
+        statusMenu.addItem(modeItem)
+        statusMenu.addItem(focusItem)
+        statusMenu.addItem(.separator())
+
+        let restartItem = NSMenuItem(title: "Restart Bridge", action: #selector(restartBridge(_:)), keyEquivalent: "r")
+        restartItem.target = self
+        statusMenu.addItem(restartItem)
+
+        let quitItem = NSMenuItem(title: "Quit Bridge", action: #selector(quitBridge(_:)), keyEquivalent: "q")
+        quitItem.target = self
+        statusMenu.addItem(quitItem)
+
+        statusItem.menu = statusMenu
+    }
+
+    @objc
+    private func refresh(_ sender: Any?) {
+        let snapshot = bridge.statusSnapshot()
+        controllersItem.title = "Controllers: \(snapshot.controllerCount)"
+        profileItem.title = "Profile: \(snapshot.activeProfileName ?? "none")"
+        modeItem.title = "Mode: \(snapshot.dryRun ? "Dry-run" : "Live") | Bridge: \(snapshot.bridgeEnabled ? "On" : "Off")"
+        focusItem.title = "Frontmost: \(snapshot.frontmostBundleID ?? "unknown")"
+
+        if let button = statusItem.button {
+            button.title = snapshot.controllerCount > 0 ? "SC\(snapshot.dryRun ? "*" : "")" : "SC?"
+        }
+    }
+
+    @objc
+    private func quitBridge(_ sender: Any?) {
+        NSApp.terminate(nil)
+    }
+
+    @objc
+    private func restartBridge(_ sender: Any?) {
+        do {
+            switch restartMode {
+            case .launchd(let label, let domain):
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+                process.arguments = ["kickstart", "-k", "\(domain)/\(label)"]
+                try process.run()
+                process.waitUntilExit()
+
+                guard process.terminationStatus == 0 else {
+                    throw BridgeError.actionExecutionFailed("launchctl restart failed with status \(process.terminationStatus)")
+                }
+
+                NSApp.terminate(nil)
+
+            case .manual(let executablePath, let arguments, let workingDirectory):
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: executablePath)
+                process.arguments = arguments
+                process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
+                try process.run()
+                NSApp.terminate(nil)
+            }
+        } catch {
+            NSSound.beep()
+            print("[ERROR] restart failed: \(error.localizedDescription)")
+        }
+    }
+
+    private static func detectRestartMode() -> RestartMode {
+        let environment = ProcessInfo.processInfo.environment
+        if let label = environment["XPC_SERVICE_NAME"], !label.isEmpty {
+            return .launchd(label: label, domain: "gui/\(getuid())")
+        }
+
+        let executablePath = CommandLine.arguments[0]
+        let arguments = Array(CommandLine.arguments.dropFirst())
+        let workingDirectory = FileManager.default.currentDirectoryPath
+        return .manual(executablePath: executablePath, arguments: arguments, workingDirectory: workingDirectory)
+    }
+}
+
+@MainActor
+final class RuntimeState {
+    static let shared = RuntimeState()
+    var statusItemController: StatusItemController?
+}
+
+@MainActor
 func run() throws {
     let options = try CLIOptions.parse(arguments: CommandLine.arguments)
     let configPath = ConfigLoader.absolutePath(for: options.configPath)
     let config = try ConfigLoader.load(path: configPath)
+
+    let app = NSApplication.shared
+    app.setActivationPolicy(.accessory)
 
     let bridge = ControllerBridge(
         config: config,
@@ -2456,11 +2603,15 @@ func run() throws {
         promptAccessibility: options.promptAccessibility,
         diagnoseController: options.diagnoseController
     )
+    RuntimeState.shared.statusItemController = StatusItemController(bridge: bridge)
     bridge.start()
+    app.run()
 }
 
 do {
-    try run()
+    try MainActor.assumeIsolated {
+        try run()
+    }
 } catch {
     print("Fatal: \(error.localizedDescription)")
     Foundation.exit(1)
