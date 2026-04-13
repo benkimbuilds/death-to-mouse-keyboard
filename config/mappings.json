@@ -50,6 +50,27 @@
           "description": "Send Tab (L2 + X behaves like Cmd+Tab)"
         }
       },
+      "a": {
+        "edgeTrigger": true,
+        "action": {
+          "type": "keystroke",
+          "keyCode": 49,
+          "modifiers": [
+            "option"
+          ],
+          "description": "Send Option-Space for Handy transcription"
+        }
+      },
+      "b": {
+        "debounceMs": 120,
+        "edgeTrigger": true,
+        "action": {
+          "type": "keystroke",
+          "keyCode": 36,
+          "modifiers": [],
+          "description": "Send Enter everywhere"
+        }
+      },
       "y": {
         "debounceMs": 120,
         "edgeTrigger": true,
@@ -65,9 +86,11 @@
         "edgeTrigger": true,
         "action": {
           "type": "keystroke",
-          "keyCode": 126,
-          "modifiers": [],
-          "description": "Send Up Arrow"
+          "keyCode": 8,
+          "modifiers": [
+            "control"
+          ],
+          "description": "Send Control-C"
         }
       },
       "dpadDown": {
@@ -84,20 +107,18 @@
         "debounceMs": 140,
         "edgeTrigger": true,
         "action": {
-          "type": "keystroke",
-          "keyCode": 123,
-          "modifiers": [],
-          "description": "Send Left Arrow"
+          "type": "focusApp",
+          "bundleID": "company.thebrowser.Browser",
+          "description": "Focus Arc"
         }
       },
       "dpadRight": {
         "debounceMs": 140,
         "edgeTrigger": true,
         "action": {
-          "type": "keystroke",
-          "keyCode": 124,
-          "modifiers": [],
-          "description": "Send Right Arrow"
+          "type": "focusApp",
+          "bundleID": "com.mitchellh.ghostty",
+          "description": "Focus Ghostty"
         }
       },
       "leftShoulder": {
@@ -132,6 +153,38 @@
     "ghostty": {
       "enabled": true,
       "analog": {
+        "leftStickVerticalActions": {
+          "enabled": true,
+          "deadzone": 0.58,
+          "repeatIntervalMs": 140,
+          "edgeTrigger": false,
+          "upAction": {
+            "type": "ghosttyAction",
+            "ghosttyAction": "goto_split:up",
+            "description": "Focus the split above"
+          },
+          "downAction": {
+            "type": "ghosttyAction",
+            "ghosttyAction": "goto_split:down",
+            "description": "Focus the split below"
+          }
+        },
+        "leftStickHorizontalActions": {
+          "enabled": true,
+          "deadzone": 0.58,
+          "repeatIntervalMs": 140,
+          "edgeTrigger": false,
+          "leftAction": {
+            "type": "ghosttyAction",
+            "ghosttyAction": "goto_split:left",
+            "description": "Focus the split to the left"
+          },
+          "rightAction": {
+            "type": "ghosttyAction",
+            "ghosttyAction": "goto_split:right",
+            "description": "Focus the split to the right"
+          }
+        },
         "rightStickVerticalActions": {
           "enabled": true,
           "deadzone": 0.58,
@@ -170,20 +223,20 @@
           "debounceMs": 250,
           "edgeTrigger": true,
           "action": {
-            "type": "text",
-            "text": "co",
-            "delayMs": 80,
-            "pressEnter": true,
-            "description": "Launch Codex via the Ghostty co alias"
+            "type": "ghosttyAction",
+            "ghosttyAction": "close_surface",
+            "description": "Close focused split surface via Ghostty native action"
           }
         },
         "options": {
           "debounceMs": 220,
           "edgeTrigger": true,
           "action": {
-            "type": "ghosttyAction",
-            "ghosttyAction": "close_surface",
-            "description": "Close focused split surface via Ghostty native action"
+            "type": "text",
+            "text": "co",
+            "delayMs": 80,
+            "pressEnter": true,
+            "description": "Launch Codex via the Ghostty co alias"
           }
         },
         "share": {
@@ -200,8 +253,8 @@
           "edgeTrigger": true,
           "action": {
             "type": "ghosttyAction",
-            "ghosttyAction": "new_split:right",
-            "description": "Split right via Ghostty native action"
+            "ghosttyAction": "new_split:down",
+            "description": "Split down via Ghostty native action"
           }
         },
         "leftThumbstickButton": {
@@ -209,8 +262,8 @@
           "edgeTrigger": true,
           "action": {
             "type": "ghosttyAction",
-            "ghosttyAction": "new_split:down",
-            "description": "Split down via Ghostty native action"
+            "ghosttyAction": "new_split:right",
+            "description": "Split right via Ghostty native action"
           }
         },
         "thumbsticksBoth": {
@@ -222,59 +275,44 @@
             "description": "Open a new Ghostty tab when both thumbstick buttons are pressed together"
           }
         },
-        "a": {
-          "edgeTrigger": true,
-          "action": {
-            "type": "holdKeystroke",
-            "keyCode": 49,
-            "modifiers": [],
-            "description": "Hold Space for dictation"
-          }
-        },
-        "b": {
-          "debounceMs": 120,
-          "edgeTrigger": true,
-          "action": {
-            "type": "keystroke",
-            "keyCode": 36,
-            "modifiers": [],
-            "description": "Send Enter"
-          }
-        },
         "dpadUp": {
           "debounceMs": 160,
           "edgeTrigger": true,
           "action": {
-            "type": "ghosttyAction",
-            "ghosttyAction": "goto_split:up",
-            "description": "Focus the split above"
+            "type": "keystroke",
+            "keyCode": 8,
+            "modifiers": [
+              "control"
+            ],
+            "description": "Send Control-C"
           }
         },
         "dpadDown": {
           "debounceMs": 160,
           "edgeTrigger": true,
           "action": {
-            "type": "ghosttyAction",
-            "ghosttyAction": "goto_split:down",
-            "description": "Focus the split below"
+            "type": "keystroke",
+            "keyCode": 121,
+            "modifiers": [],
+            "description": "Page down through scrollback"
           }
         },
         "dpadLeft": {
           "debounceMs": 160,
           "edgeTrigger": true,
           "action": {
-            "type": "ghosttyAction",
-            "ghosttyAction": "goto_split:left",
-            "description": "Focus the split to the left"
+            "type": "focusApp",
+            "bundleID": "company.thebrowser.Browser",
+            "description": "Focus Arc"
           }
         },
         "dpadRight": {
           "debounceMs": 160,
           "edgeTrigger": true,
           "action": {
-            "type": "ghosttyAction",
-            "ghosttyAction": "goto_split:right",
-            "description": "Focus the split to the right"
+            "type": "focusApp",
+            "bundleID": "com.mitchellh.ghostty",
+            "description": "Focus Ghostty"
           }
         }
       }

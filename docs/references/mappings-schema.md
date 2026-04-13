@@ -24,6 +24,8 @@ Behavior note:
 
 ## AnalogConfig
 - `leftStickVerticalScroll` (`StickVerticalScrollConfig`, optional): map left stick `Y` axis to vertical scrolling.
+- `leftStickVerticalActions` (`StickVerticalActionConfig`, optional): map left stick `Y` tilt into up/down discrete actions.
+- `leftStickHorizontalActions` (`StickHorizontalActionConfig`, optional): map left stick `X` tilt into left/right discrete actions.
 - `rightStickVerticalScroll` (`StickVerticalScrollConfig`, optional): map right stick `Y` axis to vertical scrolling.
 - `rightStickPointer` (`StickPointerConfig`, optional): map right stick `X/Y` axes to mouse pointer movement.
 - `rightStickVerticalActions` (`StickVerticalActionConfig`, optional): map right stick `Y` tilt into up/down discrete actions.
@@ -71,14 +73,19 @@ Behavior note:
 - `action` (`ActionConfig`): action to execute.
 
 ## ActionConfig
-- `type` (`"keystroke" | "holdKeystroke" | "shell" | "applescript" | "ghosttyAction" | "text" | "mouseClick"`)
+- `type` (`"keystroke" | "holdKeystroke" | "focusApp" | "shell" | "applescript" | "ghosttyAction" | "text" | "mouseClick"`)
 - Keystroke fields:
   - `keyCode` (`int`, required)
   - `modifiers` (`string[]`, optional)
+  - `postKeyCode` (`int`, optional): second keystroke to send after the main keystroke.
+  - `postModifiers` (`string[]`, optional): modifiers for `postKeyCode`.
+  - `postDelayMs` (`int`, optional): delay after the main keystroke and before `postKeyCode`.
 - Hold keystroke fields:
   - `keyCode` (`int`, required)
   - `modifiers` (`string[]`, optional)
-  - Behavior: key down on button press, key up on button release.
+  - Behavior: key down on button press, key up on button release, with synthetic auto-repeat while held for non-modifier keys.
+- Focus app fields:
+  - `bundleID` (`string`, required): bundle identifier of the running app whose active window should be focused.
 - Shell fields:
   - `command` (`string`, required)
 - AppleScript fields:

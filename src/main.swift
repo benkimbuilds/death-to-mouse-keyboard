@@ -94,6 +94,8 @@ struct ProfileConfig: Decodable {
 
 struct AnalogConfig: Decodable {
     let leftStickVerticalScroll: StickVerticalScrollConfig?
+    let leftStickVerticalActions: StickVerticalActionConfig?
+    let leftStickHorizontalActions: StickHorizontalActionConfig?
     let rightStickVerticalScroll: StickVerticalScrollConfig?
     let rightStickPointer: StickPointerConfig?
     let rightStickVerticalActions: StickVerticalActionConfig?
@@ -154,6 +156,10 @@ struct ActionConfig: Decodable {
     let type: ActionType
     let keyCode: Int?
     let modifiers: [String]?
+    let postKeyCode: Int?
+    let postModifiers: [String]?
+    let postDelayMs: Int?
+    let bundleID: String?
     let command: String?
     let script: String?
     let ghosttyAction: String?
@@ -170,6 +176,7 @@ struct ActionConfig: Decodable {
 enum ActionType: String, Decodable {
     case keystroke
     case holdKeystroke
+    case focusApp
     case shell
     case applescript
     case ghosttyAction
@@ -253,6 +260,20 @@ struct ConfigLoader {
                 if let left = analogConfig.leftStickVerticalScroll {
                     try validateVerticalScrollConfig(left, profileName: profileName, configName: "leftStickVerticalScroll")
                 }
+                if let verticalActions = analogConfig.leftStickVerticalActions {
+                    try validateStickVerticalActionConfig(
+                        verticalActions,
+                        profileName: profileName,
+                        configName: "leftStickVerticalActions"
+                    )
+                }
+                if let horizontalActions = analogConfig.leftStickHorizontalActions {
+                    try validateStickHorizontalActionConfig(
+                        horizontalActions,
+                        profileName: profileName,
+                        configName: "leftStickHorizontalActions"
+                    )
+                }
                 if let right = analogConfig.rightStickVerticalScroll {
                     try validateVerticalScrollConfig(right, profileName: profileName, configName: "rightStickVerticalScroll")
                 }
@@ -287,6 +308,20 @@ struct ConfigLoader {
                 if let left = analogConfig.leftStickVerticalScroll {
                     try validateVerticalScrollConfig(left, profileName: "alwaysOn", configName: "leftStickVerticalScroll")
                 }
+                if let verticalActions = analogConfig.leftStickVerticalActions {
+                    try validateStickVerticalActionConfig(
+                        verticalActions,
+                        profileName: "alwaysOn",
+                        configName: "leftStickVerticalActions"
+                    )
+                }
+                if let horizontalActions = analogConfig.leftStickHorizontalActions {
+                    try validateStickHorizontalActionConfig(
+                        horizontalActions,
+                        profileName: "alwaysOn",
+                        configName: "leftStickHorizontalActions"
+                    )
+                }
                 if let right = analogConfig.rightStickVerticalScroll {
                     try validateVerticalScrollConfig(right, profileName: "alwaysOn", configName: "rightStickVerticalScroll")
                 }
@@ -317,9 +352,16 @@ struct ConfigLoader {
             guard action.keyCode != nil else {
                 throw BridgeError.configValidationFailed("\(context) keystroke action requires keyCode")
             }
+            if action.postKeyCode != nil, let postDelayMs = action.postDelayMs, postDelayMs < 0 {
+                throw BridgeError.configValidationFailed("\(context) keystroke action postDelayMs must be >= 0")
+            }
         case .holdKeystroke:
             guard action.keyCode != nil else {
                 throw BridgeError.configValidationFailed("\(context) holdKeystroke action requires keyCode")
+            }
+        case .focusApp:
+            guard let bundleID = action.bundleID, !bundleID.isEmpty else {
+                throw BridgeError.configValidationFailed("\(context) focusApp action requires bundleID")
             }
         case .shell:
             guard let command = action.command, !command.isEmpty else {
@@ -470,6 +512,9 @@ final class ProfileResolver {
 final class ActionExecutor {
     private let dryRun: Bool
     private var activeHeldModifierFlags = CGEventFlags()
+    private var holdRepeatTimers: [String: DispatchSourceTimer] = [:]
+    private let holdRepeatInitialDelayMs = 350
+    private let holdRepeatIntervalMs = 80
     private let ghosttyBundleID = "com.mitchellh.ghostty"
 
     init(dryRun: Bool) {
@@ -497,10 +542,25 @@ final class ActionExecutor {
             let keyCode = CGKeyCode(keyCodeValue)
             let flags = effectiveModifierFlags(from: action.modifiers ?? [])
             try postKeystroke(keyCode: keyCode, modifiers: flags)
+            if let postDelayMs = action.postDelayMs, postDelayMs > 0 {
+                Thread.sleep(forTimeInterval: Double(postDelayMs) / 1000.0)
+            }
+            if let postKeyCodeValue = action.postKeyCode {
+                let postFlags = effectiveModifierFlags(from: action.postModifiers ?? [])
+                try postKeystroke(keyCode: CGKeyCode(postKeyCodeValue), modifiers: postFlags)
+            }
             print("[ACTION] keystroke keyCode=\(keyCodeValue) profile=\(profile) button=\(button)")
 
         case .holdKeystroke:
             throw BridgeError.actionExecutionFailed("holdKeystroke must be handled as press/release lifecycle")
+
+        case .focusApp:
+            guard let bundleID = action.bundleID else {
+                throw BridgeError.actionExecutionFailed("focusApp action missing bundleID")
+            }
+
+            try focusApplication(bundleID: bundleID, profile: profile, source: button)
+            print("[ACTION] focus-app bundleID=\(bundleID) profile=\(profile) button=\(button)")
 
         case .shell:
             guard let command = action.command else {
@@ -587,6 +647,12 @@ final class ActionExecutor {
         try postKeyEvent(keyCode: keyCode, keyDown: true, modifiers: flags)
         if let heldFlag = modifierFlag(forHeldKeyCode: keyCode) {
             activeHeldModifierFlags.formUnion(heldFlag)
+        } else {
+            startHoldRepeatTimer(
+                holdKey: holdKey(profile: profile, button: button),
+                keyCode: keyCode,
+                modifiers: flags
+            )
         }
         print("[ACTION] hold-begin keyCode=\(keyCodeValue) profile=\(profile) button=\(button)")
     }
@@ -609,6 +675,7 @@ final class ActionExecutor {
         }
 
         let keyCode = CGKeyCode(keyCodeValue)
+        cancelHoldRepeatTimer(holdKey: holdKey(profile: profile, button: button))
         if let heldFlag = modifierFlag(forHeldKeyCode: keyCode) {
             activeHeldModifierFlags.remove(heldFlag)
         }
@@ -766,6 +833,52 @@ final class ActionExecutor {
         print("[ACTION] focus-frontmost-window profile=\(profile) source=\(source) point=(\(Int(target.x)),\(Int(target.y)))")
     }
 
+    func focusApplication(bundleID: String, profile: String, source: String) throws {
+        if dryRun {
+            print("[DRY-RUN] focus-app bundleID=\(bundleID) profile=\(profile) source=\(source)")
+            return
+        }
+
+        if !AXIsProcessTrusted() {
+            throw BridgeError.actionExecutionFailed("Accessibility permission is required for app focus")
+        }
+
+        guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first else {
+            throw BridgeError.actionExecutionFailed("Application is not running: \(bundleID)")
+        }
+
+        _ = app.activate()
+
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+        var lastError: Error?
+        for _ in 0..<10 {
+            do {
+                let windowElement = try focusedOrMainWindow(for: appElement)
+                if raise(windowElement: windowElement), bundleID != ghosttyBundleID {
+                    return
+                }
+
+                let windowFrame = try frame(for: windowElement)
+                let target = CGPoint(x: windowFrame.midX, y: windowFrame.midY)
+                try clickMouse(at: target, button: .left, profile: profile, source: source)
+                return
+            } catch {
+                lastError = error
+                Thread.sleep(forTimeInterval: 0.03)
+            }
+        }
+
+        if app.activate() {
+            return
+        }
+
+        throw lastError ?? BridgeError.actionExecutionFailed("Failed to focus app window: \(bundleID)")
+    }
+
+    private func raise(windowElement: AXUIElement) -> Bool {
+        AXUIElementPerformAction(windowElement, kAXRaiseAction as CFString) == .success
+    }
+
     private func modifierFlags(from modifiers: [String]) -> CGEventFlags {
         modifiers.reduce(CGEventFlags()) { partial, modifier in
             switch modifier.lowercased() {
@@ -815,9 +928,48 @@ final class ActionExecutor {
         }
     }
 
+    private func modifierKeyCodes(for modifiers: CGEventFlags) -> [CGKeyCode] {
+        var keyCodes: [CGKeyCode] = []
+
+        if modifiers.contains(.maskControl) {
+            keyCodes.append(59)
+        }
+        if modifiers.contains(.maskShift) {
+            keyCodes.append(56)
+        }
+        if modifiers.contains(.maskAlternate) {
+            keyCodes.append(58)
+        }
+        if modifiers.contains(.maskCommand) {
+            keyCodes.append(55)
+        }
+        if modifiers.contains(.maskSecondaryFn) {
+            keyCodes.append(63)
+        }
+
+        return keyCodes
+    }
+
     private func postKeystroke(keyCode: CGKeyCode, modifiers: CGEventFlags) throws {
-        try postKeyEvent(keyCode: keyCode, keyDown: true, modifiers: modifiers)
-        try postKeyEvent(keyCode: keyCode, keyDown: false, modifiers: modifiers)
+        let modifierKeyCodes = modifierKeyCodes(for: modifiers)
+
+        for modifierKeyCode in modifierKeyCodes {
+            try postKeyEvent(keyCode: modifierKeyCode, keyDown: true, modifiers: [])
+        }
+
+        do {
+            try postKeyEvent(keyCode: keyCode, keyDown: true, modifiers: modifiers)
+            try postKeyEvent(keyCode: keyCode, keyDown: false, modifiers: modifiers)
+        } catch {
+            for modifierKeyCode in modifierKeyCodes.reversed() {
+                try? postKeyEvent(keyCode: modifierKeyCode, keyDown: false, modifiers: [])
+            }
+            throw error
+        }
+
+        for modifierKeyCode in modifierKeyCodes.reversed() {
+            try postKeyEvent(keyCode: modifierKeyCode, keyDown: false, modifiers: [])
+        }
     }
 
 
@@ -829,6 +981,50 @@ final class ActionExecutor {
 
         event.flags = modifiers
         event.post(tap: .cghidEventTap)
+    }
+
+    private func postKeyRepeatEvent(keyCode: CGKeyCode, modifiers: CGEventFlags) throws {
+        guard let source = CGEventSource(stateID: .hidSystemState),
+              let event = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true) else {
+            throw BridgeError.actionExecutionFailed("Failed to create keyboard repeat event")
+        }
+
+        event.flags = modifiers
+        event.setIntegerValueField(.keyboardEventAutorepeat, value: 1)
+        event.post(tap: .cghidEventTap)
+    }
+
+    private func holdKey(profile: String, button: String) -> String {
+        "\(profile)::\(button)"
+    }
+
+    private func startHoldRepeatTimer(holdKey: String, keyCode: CGKeyCode, modifiers: CGEventFlags) {
+        cancelHoldRepeatTimer(holdKey: holdKey)
+
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
+        timer.schedule(
+            deadline: .now() + .milliseconds(holdRepeatInitialDelayMs),
+            repeating: .milliseconds(holdRepeatIntervalMs)
+        )
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            do {
+                try self.postKeyRepeatEvent(keyCode: keyCode, modifiers: modifiers)
+            } catch {
+                print("[ERROR] hold repeat failed: \(error.localizedDescription)")
+                self.cancelHoldRepeatTimer(holdKey: holdKey)
+            }
+        }
+        holdRepeatTimers[holdKey] = timer
+        timer.resume()
+    }
+
+    private func cancelHoldRepeatTimer(holdKey: String) {
+        guard let timer = holdRepeatTimers.removeValue(forKey: holdKey) else {
+            return
+        }
+        timer.setEventHandler {}
+        timer.cancel()
     }
 
     private func postText(_ text: String) throws {
@@ -1275,6 +1471,8 @@ final class ControllerBridge: NSObject {
                 pollDiagnosticAnalogs(controllerID: controllerID, gamepad: gamepad)
             }
             pollConfiguredVerticalScroll(controllerID: controllerID, gamepad: gamepad)
+            pollConfiguredLeftVerticalActions(controllerID: controllerID, gamepad: gamepad)
+            pollConfiguredLeftHorizontalActions(controllerID: controllerID, gamepad: gamepad)
             pollConfiguredPointerMove(controllerID: controllerID, gamepad: gamepad)
             pollConfiguredVerticalActions(controllerID: controllerID, gamepad: gamepad)
             pollConfiguredHorizontalActions(controllerID: controllerID, gamepad: gamepad)
@@ -1433,7 +1631,33 @@ final class ControllerBridge: NSObject {
             )
         }
 
-        if let leftScroll = config.alwaysOn?.analog?.leftStickVerticalScroll, leftScroll.enabled ?? true {
+        let profileOverridesLeftStickVerticalScroll: Bool = {
+            guard let profile = activeProfile,
+                  profile.enabled ?? true else {
+                return false
+            }
+
+            if let leftVerticalActions = profile.analog?.leftStickVerticalActions,
+               leftVerticalActions.enabled ?? true {
+                return true
+            }
+
+            if let leftHorizontalActions = profile.analog?.leftStickHorizontalActions,
+               leftHorizontalActions.enabled ?? true {
+                return true
+            }
+
+            if let leftScroll = profile.analog?.leftStickVerticalScroll,
+               leftScroll.enabled ?? true {
+                return true
+            }
+
+            return false
+        }()
+
+        if !profileOverridesLeftStickVerticalScroll,
+           let leftScroll = config.alwaysOn?.analog?.leftStickVerticalScroll,
+           leftScroll.enabled ?? true {
             processVerticalScroll(
                 controllerID: controllerID,
                 profileName: "alwaysOn",
@@ -1620,8 +1844,11 @@ final class ControllerBridge: NSObject {
 
         processHorizontalActions(
             controllerID: controllerID,
+            stateKey: stateKey,
+            throttleKey: "\(controllerID)::\(horizontalSource.profileName)::rightStickHorizontalActions",
             profileName: horizontalSource.profileName,
             rawX: rawX,
+            sourcePrefix: "rightStick",
             config: horizontalSource.config
         )
     }
@@ -1658,20 +1885,106 @@ final class ControllerBridge: NSObject {
 
         processVerticalActions(
             controllerID: controllerID,
+            stateKey: stateKey,
+            throttleKey: "\(controllerID)::\(verticalSource.profileName)::rightStickVerticalActions",
             profileName: verticalSource.profileName,
             rawY: rawY,
+            sourcePrefix: "rightStick",
+            config: verticalSource.config
+        )
+    }
+
+    private func pollConfiguredLeftHorizontalActions(controllerID: String, gamepad: GCExtendedGamepad) {
+        let stateKey = "\(controllerID)::leftStickHorizontalActions"
+        let rawX = Double(gamepad.leftThumbstick.xAxis.value)
+
+        guard bridgeEnabled else {
+            analogDirectionStates[stateKey] = 0
+            return
+        }
+
+        let activeProfileName = profileResolver.resolveActiveProfile()
+        let activeProfile = activeProfileName.flatMap { config.profiles[$0] }
+        let horizontalSource: (profileName: String, config: StickHorizontalActionConfig)?
+        if let globalHorizontal = config.alwaysOn?.analog?.leftStickHorizontalActions,
+           globalHorizontal.enabled ?? true {
+            horizontalSource = ("alwaysOn", globalHorizontal)
+        } else if let activeProfileName,
+                  let profile = activeProfile,
+                  profile.enabled ?? true,
+                  let profileHorizontal = profile.analog?.leftStickHorizontalActions,
+                  profileHorizontal.enabled ?? true {
+            horizontalSource = (activeProfileName, profileHorizontal)
+        } else {
+            horizontalSource = nil
+        }
+
+        guard let horizontalSource else {
+            analogDirectionStates[stateKey] = 0
+            return
+        }
+
+        processHorizontalActions(
+            controllerID: controllerID,
+            stateKey: stateKey,
+            throttleKey: "\(controllerID)::\(horizontalSource.profileName)::leftStickHorizontalActions",
+            profileName: horizontalSource.profileName,
+            rawX: rawX,
+            sourcePrefix: "leftStick",
+            config: horizontalSource.config
+        )
+    }
+
+    private func pollConfiguredLeftVerticalActions(controllerID: String, gamepad: GCExtendedGamepad) {
+        let stateKey = "\(controllerID)::leftStickVerticalActions"
+        let rawY = Double(gamepad.leftThumbstick.yAxis.value)
+
+        guard bridgeEnabled else {
+            analogDirectionStates[stateKey] = 0
+            return
+        }
+
+        let activeProfileName = profileResolver.resolveActiveProfile()
+        let activeProfile = activeProfileName.flatMap { config.profiles[$0] }
+        let verticalSource: (profileName: String, config: StickVerticalActionConfig)?
+        if let globalVertical = config.alwaysOn?.analog?.leftStickVerticalActions,
+           globalVertical.enabled ?? true {
+            verticalSource = ("alwaysOn", globalVertical)
+        } else if let activeProfileName,
+                  let profile = activeProfile,
+                  profile.enabled ?? true,
+                  let profileVertical = profile.analog?.leftStickVerticalActions,
+                  profileVertical.enabled ?? true {
+            verticalSource = (activeProfileName, profileVertical)
+        } else {
+            verticalSource = nil
+        }
+
+        guard let verticalSource else {
+            analogDirectionStates[stateKey] = 0
+            return
+        }
+
+        processVerticalActions(
+            controllerID: controllerID,
+            stateKey: stateKey,
+            throttleKey: "\(controllerID)::\(verticalSource.profileName)::leftStickVerticalActions",
+            profileName: verticalSource.profileName,
+            rawY: rawY,
+            sourcePrefix: "leftStick",
             config: verticalSource.config
         )
     }
 
     private func processHorizontalActions(
         controllerID: String,
+        stateKey: String,
+        throttleKey: String,
         profileName: String,
         rawX: Double,
+        sourcePrefix: String,
         config: StickHorizontalActionConfig
     ) {
-        let stateKey = "\(controllerID)::rightStickHorizontalActions"
-        let throttleKey = "\(controllerID)::\(profileName)::rightStickHorizontalActions"
         let deadzone = min(max(config.deadzone ?? 0.58, 0.0), 0.99)
         let direction: Int
 
@@ -1704,7 +2017,7 @@ final class ControllerBridge: NSObject {
         }
 
         let action = direction < 0 ? config.leftAction : config.rightAction
-        let syntheticButton = direction < 0 ? "rightStickLeft" : "rightStickRight"
+        let syntheticButton = direction < 0 ? "\(sourcePrefix)Left" : "\(sourcePrefix)Right"
         guard let action else {
             return
         }
@@ -1720,12 +2033,13 @@ final class ControllerBridge: NSObject {
 
     private func processVerticalActions(
         controllerID: String,
+        stateKey: String,
+        throttleKey: String,
         profileName: String,
         rawY: Double,
+        sourcePrefix: String,
         config: StickVerticalActionConfig
     ) {
-        let stateKey = "\(controllerID)::rightStickVerticalActions"
-        let throttleKey = "\(controllerID)::\(profileName)::rightStickVerticalActions"
         let deadzone = min(max(config.deadzone ?? 0.58, 0.0), 0.99)
         let direction: Int
 
@@ -1758,7 +2072,7 @@ final class ControllerBridge: NSObject {
         }
 
         let action = direction < 0 ? config.downAction : config.upAction
-        let syntheticButton = direction < 0 ? "rightStickDown" : "rightStickUp"
+        let syntheticButton = direction < 0 ? "\(sourcePrefix)Down" : "\(sourcePrefix)Up"
         guard let action else {
             return
         }

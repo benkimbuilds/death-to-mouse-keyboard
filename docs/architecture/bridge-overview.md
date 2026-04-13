@@ -55,7 +55,9 @@ flowchart TD
 ## Action Types
 
 - `keystroke` / `holdKeystroke`
-  - generic macOS key injection
+  - generic macOS key injection; held keys synthesize repeat events while held so terminal apps see closer-to-real key hold behavior, and single keystrokes can optionally chain a delayed follow-up keystroke
+- `focusApp`
+  - activates a specific running app and clicks its active window to pull focus onto that display
 - `ghosttyAction`
   - Ghostty-native terminal action such as `next_tab`, `goto_split:next`, or `close_surface`
 - `applescript`
